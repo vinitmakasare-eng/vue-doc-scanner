@@ -1,0 +1,9 @@
+# The app lives in a subdirectory, so point Netlify at it.
+[build]
+  base = "vue-document-scanner"
+  command = "npm ci && npm run build"
+  publish = "dist"
+
+[build.environment]
+  # Vite 8 requires Node ^20.19 or >=22.12
+  NODE_VERSION = "22"
