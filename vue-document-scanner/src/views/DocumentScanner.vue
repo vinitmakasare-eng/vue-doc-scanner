@@ -214,6 +214,10 @@ const {
   stopCamera
 } = useCamera()
 
+// `video` is consumed by the template via ref="video"; the explicit
+// void keeps the type-checker from flagging the destructured binding.
+void video
+
 // Application state
 
 const step = ref<ScannerStep>('camera')

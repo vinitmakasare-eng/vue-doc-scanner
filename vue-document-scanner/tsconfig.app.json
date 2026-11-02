@@ -6,9 +6,8 @@
     "allowArbitraryExtensions": true,
 
     /* Path aliases - mirrors Vite's resolve.alias config */
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     },
 
     /* Linting */

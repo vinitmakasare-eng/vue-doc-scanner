@@ -21,13 +21,13 @@
         Retake
       </button>
 
-      <button
+      <!-- <button
         class="primary-button"
         :disabled="uploading"
         @click="$emit('upload')"
       >
         {{ uploading ? 'Uploading...' : 'Upload document' }}
-      </button>
+      </button> -->
     </div>
   </div>
 </template>
