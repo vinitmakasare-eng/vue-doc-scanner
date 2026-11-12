@@ -59,12 +59,12 @@ const filters: FilterOption[] = [
     description: 'Whiten paper, deepen text',
     css: 'grayscale(1) contrast(1.35) brightness(1.12)'
   },
-  {
-    id: 'color',
-    name: 'Colour',
-    description: 'Colour + even light',
-    css: 'contrast(1.15) saturate(1.15) brightness(1.08)'
-  },
+  // {
+  //   id: 'color',
+  //   name: 'Colour',
+  //   description: 'Colour + even light',
+  //   css: 'contrast(1.15) saturate(1.15) brightness(1.08)'
+  // },
   {
     id: 'white',
     name: 'Paper White',
@@ -77,12 +77,12 @@ const filters: FilterOption[] = [
     description: 'Strong local contrast',
     css: 'grayscale(1) contrast(1.75)'
   },
-  {
-    id: 'grayscale',
-    name: 'Grayscale',
-    description: 'Natural grey',
-    css: 'grayscale(1)'
-  },
+  // {
+  //   id: 'grayscale',
+  //   name: 'Grayscale',
+  //   description: 'Natural grey',
+  //   css: 'grayscale(1)'
+  // },
   {
     id: 'bw',
     name: 'B&W Clean',
@@ -107,12 +107,12 @@ const filters: FilterOption[] = [
     description: 'Crisper edges',
     css: 'grayscale(1) contrast(1.45)'
   },
-  {
-    id: 'invert',
-    name: 'Invert',
-    description: 'White on black',
-    css: 'grayscale(1) invert(1) contrast(1.3)'
-  }
+  // {
+  //   id: 'invert',
+  //   name: 'Invert',
+  //   description: 'White on black',
+  //   css: 'grayscale(1) invert(1) contrast(1.3)'
+  // }
 ]
 </script>
 

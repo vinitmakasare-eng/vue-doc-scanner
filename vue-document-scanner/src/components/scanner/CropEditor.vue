@@ -62,7 +62,7 @@
     </div>
 
     <p class="crop-instructions">
-      Drag the corners to adjust the document boundary.
+      Drag the corners to adjust the crop. The crop stays a rectangle.
     </p>
 
     <button
@@ -164,6 +164,25 @@ const touchRadii = computed(() =>
 // large touch target doesn't make the corner jump under the finger.
 let dragOffset = { x: 0, y: 0 }
 
+// Minimum edge length (in image pixels) the crop rectangle is allowed to
+// shrink to. Matches the minimum accepted by perspectiveCrop.
+const MIN_EDGE = 20
+
+// Each corner is described as origin + alpha * a * U + beta * b * V, where
+// U and V are the (perpendicular) rectangle axes and a/b their lengths.
+// Corner order is top-left, top-right, bottom-right, bottom-left.
+const CORNER_COEFFS = [
+  { alpha: 0, beta: 0 },
+  { alpha: 1, beta: 0 },
+  { alpha: 1, beta: 1 },
+  { alpha: 0, beta: 1 }
+]
+
+// Rectangle axes captured when a drag starts. Restricting every corner to
+// this basis keeps the crop a rectangle (90-degree corners) at all times.
+let rectAxisU = { x: 1, y: 0 }
+let rectAxisV = { x: 0, y: 1 }
+
 // The overlay's viewBox spans the padded stage, not just the image,
 // so image coordinates are offset by the padding before scaling.
 function toOverlayPoint(point: Point): { x: number; y: number } {
@@ -190,6 +209,102 @@ const polygonPoints = computed(() =>
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
+}
+
+function dot(a: Point, b: Point): number {
+  return a.x * b.x + a.y * b.y
+}
+
+function normalize(vector: Point): Point {
+  const length = Math.hypot(vector.x, vector.y)
+
+  if (length === 0) {
+    return { x: 1, y: 0 }
+  }
+
+  return { x: vector.x / length, y: vector.y / length }
+}
+
+// Build an orthonormal basis (U, V) from the current corners, averaging the
+// opposite edges so a tilted document keeps its tilt while still snapping to
+// a rectangle.
+function deriveRectAxes(corners: Point[]): {
+  u: Point
+  v: Point
+} {
+  const [tl, tr, br, bl] = corners
+
+  let u = {
+    x: tr.x - tl.x + (br.x - bl.x),
+    y: tr.y - tl.y + (br.y - bl.y)
+  }
+
+  let v = {
+    x: bl.x - tl.x + (br.x - tr.x),
+    y: bl.y - tl.y + (br.y - tr.y)
+  }
+
+  u = normalize(u)
+
+  // Project V off U so the two axes are guaranteed perpendicular.
+  const projection = dot(u, v)
+
+  v = normalize({
+    x: v.x - projection * u.x,
+    y: v.y - projection * u.y
+  })
+
+  return { u, v }
+}
+
+// Keep the crop a rectangle: move the dragged corner to `target` while the
+// opposite corner stays fixed, then rebuild the other two corners from the
+// rectangle axes. Only the edge lengths are allowed to change.
+function constrainToRectangle(
+  corners: Point[],
+  index: number,
+  target: Point,
+  u: Point,
+  v: Point
+): Point[] {
+  const anchorIndex = (index + 2) % 4
+  const anchor = corners[anchorIndex]
+
+  const coords = CORNER_COEFFS[index]
+  const anchorCoords = CORNER_COEFFS[anchorIndex]
+
+  const delta = {
+    x: target.x - anchor.x,
+    y: target.y - anchor.y
+  }
+
+  const deltaAlpha = coords.alpha - anchorCoords.alpha
+  const deltaBeta = coords.beta - anchorCoords.beta
+
+  // Solve: target - anchor = deltaAlpha * a * U + deltaBeta * b * V.
+  const lengthA = Math.max(MIN_EDGE, dot(delta, u) / deltaAlpha)
+  const lengthB = Math.max(MIN_EDGE, dot(delta, v) / deltaBeta)
+
+  // Recover the rectangle origin from the fixed anchor.
+  const origin = {
+    x:
+      anchor.x -
+      anchorCoords.alpha * lengthA * u.x -
+      anchorCoords.beta * lengthB * v.x,
+    y:
+      anchor.y -
+      anchorCoords.alpha * lengthA * u.y -
+      anchorCoords.beta * lengthB * v.y
+  }
+
+  return corners.map((_point, i) => {
+    const c = CORNER_COEFFS[i]
+
+    return {
+      x: origin.x + c.alpha * lengthA * u.x + c.beta * lengthB * v.x,
+      y: origin.y + c.alpha * lengthA * u.y + c.beta * lengthB * v.y
+    }
+  })
 }
 
 function toImagePoint(event: PointerEvent): Point | null {
@@ -237,6 +352,13 @@ function startDrag(
     ? { x: corner.x - pointer.x, y: corner.y - pointer.y }
     : { x: 0, y: 0 }
 
+  // Lock the rectangle orientation for this drag so the crop always keeps
+  // 90-degree corners, no matter how the pointer moves.
+  const axes = deriveRectAxes(props.corners)
+
+  rectAxisU = axes.u
+  rectAxisV = axes.v
+
   const target = event.currentTarget as SVGElement
 
   target.setPointerCapture(event.pointerId)
@@ -265,11 +387,13 @@ function moveCorner(event: PointerEvent): void {
     props.imageHeight
   )
 
-  const updated = props.corners.map(point => ({
-    ...point
-  }))
-
-  updated[activeIndex.value] = { x, y }
+  const updated = constrainToRectangle(
+    props.corners,
+    activeIndex.value,
+    { x, y },
+    rectAxisU,
+    rectAxisV
+  )
 
   emit('update:corners', updated)
 }
